@@ -22,7 +22,7 @@ from contextlib import nullcontext
 
 import torch
 
-from nanochat.common import compute_init, compute_cleanup, print0, get_base_dir, autodetect_device_type, download_file_with_lock
+from nanochat.common import compute_init, compute_cleanup, print0, get_base_dir, autodetect_device_type, autodetect_dtype, download_file_with_lock
 from nanochat.tokenizer import HuggingFaceTokenizer
 from nanochat.checkpoint_manager import load_model
 from nanochat.core_eval import evaluate_task
@@ -156,7 +156,8 @@ def main():
     # distributed / precision setup
     device_type = autodetect_device_type()
     ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-    autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=torch.bfloat16) if device_type == "cuda" else nullcontext()
+    autocast_dtype = autodetect_dtype(device_type)
+    autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=autocast_dtype) if device_type == "cuda" else nullcontext()
 
     # Load model and tokenizer from command line or from file system
     if args.hf_path is not None:

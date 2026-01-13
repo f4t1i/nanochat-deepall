@@ -24,7 +24,7 @@ import torch
 import torch.distributed as dist
 from contextlib import nullcontext
 
-from nanochat.common import compute_init, compute_cleanup, print0, get_base_dir, DummyWandb, autodetect_device_type
+from nanochat.common import compute_init, compute_cleanup, print0, get_base_dir, DummyWandb, autodetect_device_type, autodetect_dtype
 from nanochat.checkpoint_manager import save_checkpoint, load_model
 from nanochat.engine import Engine
 from tasks.gsm8k import GSM8K
@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser(description="Reinforcement learning on GSM8K")
 parser.add_argument("--run", type=str, default="dummy", help="wandb run name ('dummy' disables wandb logging)")
 # Runtime
 parser.add_argument("--device_type", type=str, default="", help="cuda|cpu|mps (empty = autodetect)")
-parser.add_argument("--dtype", type=str, default="bfloat16", help="float32|bfloat16")
+parser.add_argument("--dtype", type=str, default="auto", help="float32|bfloat16|float16|auto (auto = autodetect based on GPU)")
 # Model loading
 parser.add_argument("--source", type=str, default="sft", help="mid|sft - which checkpoint to load from")
 parser.add_argument("--model_tag", type=str, default=None, help="model tag to load from")
@@ -69,7 +69,17 @@ user_config = vars(args).copy()
 device_type = autodetect_device_type() if args.device_type == "" else args.device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
 master_process = ddp_rank == 0 # this process will do logging, checkpointing etc.
-ptdtype = torch.float32 if args.dtype == 'float32' else torch.bfloat16
+# Determine dtype for mixed precision
+if args.dtype == 'auto':
+    ptdtype = autodetect_dtype(device_type)
+elif args.dtype == 'float32':
+    ptdtype = torch.float32
+elif args.dtype == 'bfloat16':
+    ptdtype = torch.bfloat16
+elif args.dtype == 'float16':
+    ptdtype = torch.float16
+else:
+    raise ValueError(f"Unknown dtype: {args.dtype}")
 autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=ptdtype) if device_type == "cuda" else nullcontext()
 
 # wandb logging init

@@ -150,6 +150,31 @@ def autodetect_device_type():
     print0(f"Autodetected device type: {device_type}")
     return device_type
 
+def autodetect_dtype(device_type="cuda"):
+    """
+    Autodetect the best dtype for mixed precision training based on GPU capability.
+    - Ampere and newer (compute capability >= 8.0): bfloat16
+    - Volta/Turing (compute capability 7.x): bfloat16 (limited support but works)
+    - Pascal and older (compute capability < 7.0): float16
+    - CPU/MPS: float32 (no mixed precision)
+    """
+    if device_type != "cuda":
+        print0(f"Device type {device_type} does not support mixed precision, using float32")
+        return torch.float32
+
+    # Get GPU compute capability
+    major, minor = torch.cuda.get_device_capability()
+    compute_capability = major + minor / 10
+
+    if compute_capability >= 7.0:
+        # Volta, Turing, Ampere, Ada, Hopper all support BF16
+        print0(f"GPU compute capability {compute_capability:.1f} supports bfloat16")
+        return torch.bfloat16
+    else:
+        # Pascal (P100 is 6.0) and older: use FP16
+        print0(f"GPU compute capability {compute_capability:.1f} does not support bfloat16, using float16")
+        return torch.float16
+
 def compute_init(device_type="cuda"): # cuda|cpu|mps
     """Basic initialization that we keep doing over and over, so make common."""
 

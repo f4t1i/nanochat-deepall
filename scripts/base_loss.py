@@ -13,7 +13,7 @@ import argparse
 from contextlib import nullcontext
 import torch
 from nanochat.checkpoint_manager import load_model
-from nanochat.common import compute_init, print0, compute_cleanup, autodetect_device_type
+from nanochat.common import compute_init, print0, compute_cleanup, autodetect_device_type, autodetect_dtype
 from nanochat.dataloader import tokenizing_distributed_data_loader
 from nanochat.tokenizer import get_token_bytes, HuggingFaceTokenizer
 from nanochat.loss_eval import evaluate_bpb
@@ -87,7 +87,8 @@ else:
     token_bytes = get_token_bytes(device=device)
     model_name = f"base_model (step {meta['step']})"
 
-autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=torch.bfloat16) if device_type == "cuda" else nullcontext()
+autocast_dtype = autodetect_dtype(device_type)
+autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=autocast_dtype) if device_type == "cuda" else nullcontext()
 
 print0(f"Evaluating model: {model_name}")
 

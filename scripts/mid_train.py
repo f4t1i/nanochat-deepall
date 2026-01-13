@@ -17,7 +17,7 @@ import time
 import wandb
 import torch
 from contextlib import nullcontext
-from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, get_base_dir, autodetect_device_type
+from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, get_base_dir, autodetect_device_type, autodetect_dtype
 from nanochat.tokenizer import get_token_bytes
 from nanochat.checkpoint_manager import save_checkpoint
 from nanochat.loss_eval import evaluate_bpb
@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description="Midtrain the model")
 parser.add_argument("--run", type=str, default="dummy", help="wandb run name ('dummy' disables wandb logging)")
 # Runtime
 parser.add_argument("--device_type", type=str, default="", help="cuda|cpu|mps (empty = autodetect)")
-parser.add_argument("--dtype", type=str, default="bfloat16", help="float32|bfloat16")
+parser.add_argument("--dtype", type=str, default="auto", help="float32|bfloat16|float16|auto (auto = autodetect based on GPU)")
 # Model loading
 parser.add_argument("--model_tag", type=str, default=None, help="model tag to load from")
 parser.add_argument("--model_step", type=int, default=None, help="model step to load from")
@@ -67,7 +67,17 @@ user_config = vars(args).copy()
 device_type = autodetect_device_type() if args.device_type == "" else args.device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
 master_process = ddp_rank == 0
-ptdtype = torch.float32 if args.dtype == 'float32' else torch.bfloat16
+# Determine dtype for mixed precision
+if args.dtype == 'auto':
+    ptdtype = autodetect_dtype(device_type)
+elif args.dtype == 'float32':
+    ptdtype = torch.float32
+elif args.dtype == 'bfloat16':
+    ptdtype = torch.bfloat16
+elif args.dtype == 'float16':
+    ptdtype = torch.float16
+else:
+    raise ValueError(f"Unknown dtype: {args.dtype}")
 autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=ptdtype) if device_type == "cuda" else nullcontext()
 synchronize = torch.cuda.synchronize if device_type == "cuda" else lambda: None
 get_max_memory = torch.cuda.max_memory_allocated if device_type == "cuda" else lambda: 0

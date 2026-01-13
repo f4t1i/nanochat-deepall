@@ -15,7 +15,7 @@ from contextlib import nullcontext
 import torch
 import torch.distributed as dist
 
-from nanochat.common import compute_init, compute_cleanup, get_dist_info, print0, autodetect_device_type
+from nanochat.common import compute_init, compute_cleanup, get_dist_info, print0, autodetect_device_type, autodetect_dtype
 from nanochat.checkpoint_manager import load_model
 from nanochat.engine import Engine
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--source', type=str, required=True, help="Source of the model: sft|mid|rl")
     parser.add_argument('-a', '--task-name', type=str, default=None, help="Task name. Default = all tasks. Use | to split multiple tasks.")
-    parser.add_argument('-d', '--dtype', type=str, default='bfloat16', choices=['float32', 'bfloat16'])
+    parser.add_argument('-d', '--dtype', type=str, default='auto', choices=['float32', 'bfloat16', 'float16', 'auto'])
     parser.add_argument('-t', '--temperature', type=float, default=0.0)
     parser.add_argument('-m', '--max-new-tokens', type=int, default=512)
     parser.add_argument('-n', '--num-samples', type=int, default=1)
@@ -199,7 +199,17 @@ if __name__ == "__main__":
 
     device_type = autodetect_device_type() if args.device_type == "" else args.device_type
     ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-    ptdtype = torch.float32 if args.dtype == 'float32' else torch.bfloat16
+    # Determine dtype for mixed precision
+    if args.dtype == 'auto':
+        ptdtype = autodetect_dtype(device_type)
+    elif args.dtype == 'float32':
+        ptdtype = torch.float32
+    elif args.dtype == 'bfloat16':
+        ptdtype = torch.bfloat16
+    elif args.dtype == 'float16':
+        ptdtype = torch.float16
+    else:
+        raise ValueError(f"Unknown dtype: {args.dtype}")
     autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=ptdtype) if device_type == "cuda" else nullcontext()
 
     model, tokenizer, meta = load_model(args.source, device, phase="eval", model_tag=args.model_tag, step=args.step)
