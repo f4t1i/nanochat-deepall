@@ -93,29 +93,77 @@ def main():
     
     # Load model
     print("\n📂 Lade Modell...")
-    ckpt = torch.load('/kaggle/input/deepmaster/DeepMaster_converted.pt', map_location=device, weights_only=False)
-    args = ckpt['model_args']
-    
-    model = GPT(args['vocab_size'], args['n_embd'], args['n_head'], args['n_layer'], args['block_size'], args.get('bias', True))
-    model.load_state_dict(ckpt['model'], strict=False)
-    model.to(device)
-    model.train()
-    
-    n_params = sum(p.numel() for p in model.parameters())
-    print(f"✅ {n_params:,} Parameter ({n_params/1e6:.1f}M)")
+
+    model_path = '/kaggle/input/deepmaster/DeepMaster_converted.pt'
+    if not os.path.exists(model_path):
+        print(f"   ❌ FEHLER: Modell nicht gefunden: {model_path}")
+        print("   Stelle sicher, dass das Dataset als INPUT hinzugefügt wurde!")
+        print("   Verfügbare Dateien:")
+        input_dir = Path('/kaggle/input/deepmaster')
+        if input_dir.exists():
+            for f in input_dir.iterdir():
+                print(f"     - {f.name}")
+        return
+
+    try:
+        ckpt = torch.load(model_path, map_location=device, weights_only=False)
+        args = ckpt['model_args']
+        print(f"   ✅ Modell geladen")
+        print(f"   Config: {args}")
+    except Exception as e:
+        print(f"   ❌ FEHLER beim Laden: {e}")
+        return
+
+    try:
+        model = GPT(args['vocab_size'], args['n_embd'], args['n_head'], args['n_layer'], args['block_size'], args.get('bias', True))
+        model.load_state_dict(ckpt['model'], strict=False)
+        model.to(device)
+        model.train()
+
+        n_params = sum(p.numel() for p in model.parameters())
+        print(f"   ✅ {n_params:,} Parameter ({n_params/1e6:.1f}M)")
+    except Exception as e:
+        print(f"   ❌ FEHLER beim Erstellen des Modells: {e}")
+        return
     
     # Load training data
     print("\n📚 Lade Trainingsdaten...")
-    data_path = Path('/kaggle/input/deepmaster/training_data.txt')
-    if not data_path.exists():
+
+    # Try different paths
+    possible_paths = [
+        '/kaggle/input/deepmaster/training_data.txt',
+        '/kaggle/input/deepmaster/training_data.jsonl',
+        '/kaggle/input/deepmaster/training_data.json',
+    ]
+
+    all_text = ""
+    found = False
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            print(f"   ✅ Gefunden: {path}")
+            all_text = Path(path).read_text(encoding='utf-8', errors='ignore')
+            found = True
+            break
+
+    if not found:
         # Fallback: combine all txt files
-        all_text = ""
-        for f in Path('/kaggle/input/deepmaster').glob('*.txt'):
-            all_text += f.read_text(encoding='utf-8', errors='ignore') + "\n"
-    else:
-        all_text = data_path.read_text(encoding='utf-8', errors='ignore')
-    
-    print(f"   {len(all_text):,} Zeichen")
+        print("   ⚠️  training_data.txt nicht gefunden, kombiniere alle .txt Dateien...")
+        input_dir = Path('/kaggle/input/deepmaster')
+        if input_dir.exists():
+            for f in input_dir.glob('*.txt'):
+                if f.name != 'training_data.txt':
+                    all_text += f.read_text(encoding='utf-8', errors='ignore') + "\n"
+        else:
+            print("   ❌ FEHLER: /kaggle/input/deepmaster nicht gefunden!")
+            print("   Stelle sicher, dass das Dataset als INPUT hinzugefügt wurde!")
+            return
+
+    if not all_text:
+        print("   ❌ FEHLER: Keine Trainingsdaten gefunden!")
+        return
+
+    print(f"   ✅ {len(all_text):,} Zeichen geladen")
     
     # Tokenize with tiktoken
     import tiktoken
