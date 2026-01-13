@@ -1,0 +1,99 @@
+🚀 KAGGLE QUICK START - DeepMaster Fine-Tuning
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 1: Dataset hochladen
+─────────────────────────────
+1. Gehe zu: https://www.kaggle.com/settings/datasets
+2. Klick "Create New Dataset"
+3. Wähle "Upload Files"
+4. Lade diese 3 Dateien hoch:
+   
+   ✓ deepall/DeepMaster_converted.pt
+   ✓ deepall/training_data.txt
+   ✓ deepall/kaggle_train.py
+   
+5. Name: "deepmaster"
+6. Beschreibung: "DeepMaster Training Data"
+7. Klick "Create"
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 2: Notebook erstellen
+──────────────────────────────
+1. Gehe zu: https://www.kaggle.com/code
+2. Klick "New Notebook"
+3. Wähle "Python"
+4. Wähle "GPU" (T4 oder P100)
+5. Klick "Create"
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 3: Notebook-Code eingeben
+──────────────────────────────────
+
+ZELLE 1 (Setup):
+───────────────
+!pip install tiktoken torch -q
+import os
+os.chdir('/kaggle/working')
+print("✅ Setup complete")
+
+ZELLE 2 (Training):
+──────────────────
+%run /kaggle/input/deepmaster/kaggle_train.py
+
+ZELLE 3 (Verify):
+─────────────────
+import torch
+ckpt = torch.load('/kaggle/working/DeepMaster_finetuned.pt', weights_only=False)
+print("✅ Modell erfolgreich trainiert!")
+print(f"   Parameter: {sum(p.numel() for p in ckpt['model'].values()):,}")
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 4: Ausführen
+────────────────────
+1. Klick "Run All" (oben rechts)
+2. Warte ~30 Minuten
+3. Modell wird in /kaggle/working/ gespeichert
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 5: Modell herunterladen
+────────────────────────────────
+1. Klick "Output" Tab (rechts)
+2. Klick auf "DeepMaster_finetuned.pt"
+3. Klick Download-Icon
+4. Speichere in: deepall/DeepMaster_finetuned.pt
+
+═══════════════════════════════════════════════════════════════
+
+SCHRITT 6: Lokal testen
+───────────────────────
+cd /home/deepall/nanochat
+source .venv/bin/activate
+python deepall/ask_deepflow.py
+
+═══════════════════════════════════════════════════════════════
+
+⚠️ WICHTIG: Dataset als Input hinzufügen!
+──────────────────────────────────────────
+Im Notebook rechts:
+1. Klick "Add Input"
+2. Wähle "deepmaster" Dataset
+3. Klick "Add"
+
+Dann erst "Run All" klicken!
+
+═══════════════════════════════════════════════════════════════
+
+📊 ERWARTETE ERGEBNISSE
+───────────────────────
+Training Time: ~30 Minuten (mit GPU)
+Start Loss: ~4.3
+Final Loss: ~3.5-4.0
+Modell-Größe: 124M Parameter (unverändert)
+
+═══════════════════════════════════════════════════════════════
+

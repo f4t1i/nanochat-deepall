@@ -1,0 +1,1 @@
+🧠 Lade Modell: /home/deepall/nanochat/deepall/DeepMaster_converted.pt
