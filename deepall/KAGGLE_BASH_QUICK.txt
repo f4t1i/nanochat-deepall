@@ -1,0 +1,72 @@
+================================================================================
+KAGGLE NOTEBOOK - BASH CODE ZUM REPO LADEN
+================================================================================
+
+KOPIERE DIESEN CODE IN DIE ERSTE ZELLE DEINES KAGGLE NOTEBOOKS:
+
+================================================================================
+
+# Zelle 1: Repository laden und Setup
+!apt-get update -qq && apt-get install -y git > /dev/null 2>&1
+!cd /kaggle/working && git clone https://github.com/f4t1i/nanochat-deepall.git
+!pip install -q torch transformers datasets tqdm numpy pandas scikit-learn
+
+import os
+print("✅ Repository geladen!")
+print("📁 Dateien:")
+os.system("ls -la /kaggle/working/nanochat-deepall/deepall/ | head -15")
+
+================================================================================
+
+# Zelle 2: Prüfe Dataset
+import os
+
+input_path = "/kaggle/input"
+print("📂 Input Verzeichnis:")
+if os.path.exists(input_path):
+    for item in os.listdir(input_path):
+        print(f"  ✅ {item}")
+else:
+    print("  ❌ Kein Input - Dataset MUSS hinzugefügt werden!")
+
+repo_path = "/kaggle/working/nanochat-deepall"
+training_file = f"{repo_path}/deepall/training_data.txt"
+print(f"\n📄 Training Datei existiert: {os.path.exists(training_file)}")
+
+================================================================================
+
+# Zelle 3: Training starten
+import os
+import sys
+
+repo_path = "/kaggle/working/nanochat-deepall"
+sys.path.insert(0, repo_path)
+os.chdir(f"{repo_path}/deepall")
+
+print("🚀 Starte Training...")
+os.system("python kaggle_train.py")
+
+================================================================================
+
+# Zelle 4: Ergebnisse prüfen
+import os
+
+output_path = "/kaggle/working/nanochat-deepall/deepall"
+print("📁 Output Dateien:")
+for f in os.listdir(output_path):
+    if f.endswith(('.pt', '.pth', '.txt', '.log')):
+        full_path = os.path.join(output_path, f)
+        size = os.path.getsize(full_path) / (1024*1024)
+        print(f"  ✅ {f} ({size:.2f} MB)")
+
+================================================================================
+
+WICHTIG:
+1. Erstelle ein Kaggle Notebook mit GPU
+2. Wähle dein "deepmaster" Dataset als INPUT (rechts: "+ Add input")
+3. Kopiere die 4 Zellen oben
+4. Führe sie der Reihe nach aus
+5. Download die Ergebnisse (rechts: Output Tab)
+
+================================================================================
+
